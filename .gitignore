@@ -20,7 +20,7 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual Environment
 .venv/
 venv/
 ENV/
@@ -33,22 +33,22 @@ env/
 *.swo
 *~
 
-# Environment
+# Environment variables
 .env
 .env.local
 
-# Data
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
+# Data files (large)
+data/raw/*.mat
+data/processed/*.csv
 !data/processed/.gitkeep
 
-# Models
+# Model files (large)
 models/*.gguf
+models/*.bin
 !models/.gitkeep
 
 # OCV tables
-ocv_tables/*
+ocv_tables/*.csv
 !ocv_tables/.gitkeep
 
 # Logs
@@ -59,3 +59,15 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
