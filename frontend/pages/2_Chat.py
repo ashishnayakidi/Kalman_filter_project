@@ -80,9 +80,19 @@ if prompt := st.chat_input("Ask a question about battery health..."):
                         "content": answer
                     })
                 else:
-                    # Use LFM
+                    # Use LFM with intent-aware routing
                     try:
-                        prompt_text = build_qna_prompt(prompt, daily, minute)
+                        from lfm.prompts import classify_intent, build_greeting_prompt, build_battery_prompt, build_off_topic_prompt
+                        
+                        intent = classify_intent(prompt)
+                        
+                        # Build appropriate prompt based on intent
+                        if intent == "greeting":
+                            prompt_text = build_greeting_prompt(prompt)
+                        elif intent == "off_topic":
+                            prompt_text = build_off_topic_prompt(prompt)
+                        else:  # battery
+                            prompt_text = build_battery_prompt(prompt, daily, minute)
                         # Debug: show that we're using LFM
                         model_name = lfm.model_name if hasattr(lfm, 'model_name') else 'Ollama'
                         st.info(f"🤖 Using AI model: {model_name}")

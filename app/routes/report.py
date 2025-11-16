@@ -47,17 +47,46 @@ def get_lfm() -> LocalLFM:
 
 @router.post("/report/qna", response_model=ReportResponse)
 async def generate_qna(request: QnARequest, lfm: LocalLFM = Depends(get_lfm)):
-    """Generate Q&A response about battery health."""
-    # Get current summaries
+    """Generate Q&A response about battery health with intent-aware routing."""
+    from lfm.prompts import classify_intent, build_greeting_prompt, build_battery_prompt, build_off_topic_prompt
+    
+    # Classify intent
+    intent = classify_intent(request.question)
+    
+    # Get current summaries (only needed for battery questions)
     daily = daily_summary()
     minute = minute_rollup()
     
-    # Build prompt
-    prompt = build_qna_prompt(request.question, daily, minute)
+    # Build appropriate prompt based on intent
+    if intent == "greeting":
+        prompt = build_greeting_prompt(request.question)
+    elif intent == "off_topic":
+        prompt = build_off_topic_prompt(request.question)
+    else:  # battery
+        prompt = build_battery_prompt(request.question, daily, minute)
     
     # Generate response
     try:
         answer = lfm.generate(prompt, max_tokens=512)
+        
+        # Clean up greeting responses - remove any extra explanations or verbose text
+        if intent == "greeting":
+            # Take only the first sentence or first 150 characters, whichever is shorter
+            answer = answer.strip()
+            # Remove any parenthetical notes or explanations
+            if "(Note:" in answer or "(note:" in answer:
+                answer = answer.split("(Note:")[0].strip()
+            if "(note:" in answer:
+                answer = answer.split("(note:")[0].strip()
+            # Take first sentence if multiple sentences
+            sentences = answer.split('.')
+            if len(sentences) > 1:
+                # Keep first complete sentence
+                answer = sentences[0].strip() + '.' if sentences[0].strip() else answer
+            # Limit length
+            if len(answer) > 150:
+                answer = answer[:147].rsplit(' ', 1)[0] + '...'
+        
         return ReportResponse(report=answer, summary=daily)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")

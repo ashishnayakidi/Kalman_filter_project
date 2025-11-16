@@ -1,11 +1,135 @@
 """Prompt templates for LFM Q&A and reports."""
 import json
-from typing import Dict, Any
+import re
+from typing import Dict, Any, Literal
 
 
-def build_qna_prompt(question: str, daily_summary: Dict[str, Any], minute_rollup: Dict[str, Any]) -> str:
+def classify_intent(question: str) -> Literal["greeting", "battery", "off_topic"]:
     """
-    Build Q&A prompt.
+    Classify user question intent.
+    
+    Args:
+        question: User question
+    
+    Returns:
+        Intent classification: "greeting", "battery", or "off_topic"
+    """
+    question_lower = question.lower().strip()
+    
+    # Greeting patterns
+    greeting_patterns = [
+        r'^(hi|hello|hey|greetings|good morning|good afternoon|good evening|howdy)',
+        r'^(thanks|thank you|thx|ty)',
+        r'^(how are you|how\'?s it going|what\'?s up|sup)',
+        r'^(bye|goodbye|see you|farewell)',
+        r'^(yes|no|ok|okay|sure|alright|yep|nope)$',
+    ]
+    
+    # Check for greetings
+    for pattern in greeting_patterns:
+        if re.match(pattern, question_lower):
+            return "greeting"
+    
+    # Battery-related keywords
+    battery_keywords = [
+        'battery', 'soh', 'soc', 'health', 'charge', 'charging', 'degradation',
+        'degrade', 'capacity', 'voltage', 'current', 'temperature', 'temp',
+        'life', 'lifetime', 'remaining', 'useful', 'rul', 'range', 'mileage',
+        'efficiency', 'stress', 'thermal', 'dcir', 'residual', 'prediction',
+        'should i', 'when', 'how long', 'buy', 'replace', 'warranty', 'warrant',
+        'recommend', 'advice', 'suggestion', 'optimal', 'best', 'worst',
+        'problem', 'issue', 'fault', 'error', 'warning', 'alert'
+    ]
+    
+    # Check for battery-related content
+    for keyword in battery_keywords:
+        if keyword in question_lower:
+            return "battery"
+    
+    # If question is very short and doesn't match anything, likely greeting
+    if len(question_lower.split()) <= 2 and not any(char.isdigit() for char in question_lower):
+        return "greeting"
+    
+    # Default to battery if unclear (conservative approach)
+    # But if it's clearly off-topic, mark it
+    off_topic_keywords = [
+        'weather', 'sports', 'politics', 'recipe', 'cooking', 'movie', 'music',
+        'game', 'sport', 'news', 'stock', 'crypto', 'bitcoin', 'election'
+    ]
+    
+    for keyword in off_topic_keywords:
+        if keyword in question_lower:
+            return "off_topic"
+    
+    # Default: assume battery-related (since this is a battery health chat)
+    return "battery"
+
+
+def build_greeting_prompt(question: str) -> str:
+    """
+    Build prompt for greetings and casual conversation.
+    
+    Args:
+        question: User question
+    
+    Returns:
+        Formatted prompt for greetings
+    """
+    question_lower = question.lower().strip()
+    
+    # Very simple, direct prompts based on greeting type
+    if question_lower.startswith(('hi', 'hello', 'hey')):
+        prompt = """User said: "hi" or "hello"
+
+Respond with a simple greeting like "Hello! How can I help you with battery health questions today?"
+
+Keep it to ONE sentence only. Just greet them back. Do not include examples or explanations."""
+    elif 'thank' in question_lower or 'thanks' in question_lower:
+        prompt = """User said: "thanks" or "thank you"
+
+Respond with: "You're welcome! Feel free to ask if you need help with battery health questions."
+
+Keep it to ONE sentence only."""
+    elif 'how are you' in question_lower or 'how\'s it going' in question_lower:
+        prompt = """User asked: "how are you"
+
+Respond with: "I'm doing well, thanks! I'm here to help with battery health questions. What would you like to know?"
+
+Keep it to ONE sentence only."""
+    else:
+        prompt = f"""User said: "{question}"
+
+Respond with a brief, friendly greeting (ONE sentence). Mention you're here to help with battery health questions.
+
+Keep it short and natural. Only ONE sentence."""
+    
+    return prompt
+
+
+def build_off_topic_prompt(question: str) -> str:
+    """
+    Build prompt for off-topic questions.
+    
+    Args:
+        question: User question
+    
+    Returns:
+        Formatted prompt for off-topic questions
+    """
+    prompt = f"""You are a battery health assistant. The user has asked a question that doesn't seem related to battery health.
+
+User question: {question}
+
+Politely redirect them back to battery health topics. Be friendly and helpful. Suggest they can ask about battery health, charging habits, degradation, or battery life.
+
+Keep it brief (2-3 sentences).
+"""
+    return prompt
+
+
+def build_battery_prompt(question: str, daily_summary: Dict[str, Any], minute_rollup: Dict[str, Any]) -> str:
+    """
+    Build prompt for battery-related questions with full context.
     
     Args:
         question: User question
@@ -13,7 +137,7 @@ def build_qna_prompt(question: str, daily_summary: Dict[str, Any], minute_rollup
         minute_rollup: Minute rollup dict
     
     Returns:
-        Formatted prompt
+        Formatted prompt with battery data
     """
     prompt = f"""You are a battery health expert. Answer the following question based on the battery monitoring data.
 
@@ -41,6 +165,31 @@ Drift:
 Provide a concise explanation and 3 actionable recommendations.
 """
     return prompt
+
+
+def build_qna_prompt(question: str, daily_summary: Dict[str, Any], minute_rollup: Dict[str, Any]) -> str:
+    """
+    Build Q&A prompt with intent-aware routing.
+    
+    This is a convenience function that classifies intent and routes to appropriate prompt builder.
+    For direct control, use build_greeting_prompt, build_battery_prompt, or build_off_topic_prompt.
+    
+    Args:
+        question: User question
+        daily_summary: Daily summary dict
+        minute_rollup: Minute rollup dict
+    
+    Returns:
+        Formatted prompt based on intent
+    """
+    intent = classify_intent(question)
+    
+    if intent == "greeting":
+        return build_greeting_prompt(question)
+    elif intent == "off_topic":
+        return build_off_topic_prompt(question)
+    else:  # battery
+        return build_battery_prompt(question, daily_summary, minute_rollup)
 
 
 def build_weekly_report_prompt(daily_summary: Dict[str, Any]) -> str:
@@ -79,6 +228,13 @@ Battery Data:
 - Number of Times Charged This Week: {charge_count}
 - Remaining Useful Life: {rul_text} (confidence: {rul_confidence*100:.0f}%)
 - Degradation Rate: {abs(dsoh*4.33):.2f}% per month
+- Charging Efficiency: {daily_summary.get('predictions', {}).get('charging_efficiency_pct', 0):.1f}%
+- Energy Consumption: {daily_summary.get('predictions', {}).get('energy_consumption_wh_per_km', 0):.0f} Wh/km
+- Predicted Range: {daily_summary.get('predictions', {}).get('predicted_range_km', 0):.0f} km
+- Range Drop Since New: {daily_summary.get('predictions', {}).get('range_drop_km', 0):.0f} km
+- Warranty Health Score: {daily_summary.get('predictions', {}).get('warranty_health_score', 100):.0f}/100
+- Driving Style: {daily_summary.get('predictions', {}).get('driving_style', {}).get('style', 'unknown')}
+- Thermal Stress Index: {daily_summary.get('predictions', {}).get('thermal_stress_index', 0):.1f} weighted hours
 
 Full Data:
 {json.dumps(daily_summary, indent=2)}

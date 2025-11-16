@@ -234,9 +234,38 @@ def api_ask():
             
             return jsonify({'answer': answer, 'source': 'fallback'})
         else:
-            # Use LFM
-            prompt_text = build_qna_prompt(question, daily, minute)
-            answer = lfm.generate(prompt_text, max_tokens=2048)
+            # Use LFM with intent-aware routing
+            from lfm.prompts import classify_intent, build_greeting_prompt, build_battery_prompt, build_off_topic_prompt
+            
+            intent = classify_intent(question)
+            
+            # Build appropriate prompt based on intent
+            if intent == "greeting":
+                prompt_text = build_greeting_prompt(question)
+            elif intent == "off_topic":
+                prompt_text = build_off_topic_prompt(question)
+            else:  # battery
+                prompt_text = build_battery_prompt(question, daily, minute)
+            
+            answer = lfm.generate(prompt_text, max_tokens=512)
+            
+            # Clean up greeting responses - remove any extra explanations or verbose text
+            if intent == "greeting":
+                # Take only the first sentence or first 150 characters, whichever is shorter
+                answer = answer.strip()
+                # Remove any parenthetical notes or explanations
+                if "(Note:" in answer or "(note:" in answer:
+                    answer = answer.split("(Note:")[0].strip()
+                if "(note:" in answer:
+                    answer = answer.split("(note:")[0].strip()
+                # Take first sentence if multiple sentences
+                sentences = answer.split('.')
+                if len(sentences) > 1:
+                    # Keep first complete sentence
+                    answer = sentences[0].strip() + '.' if sentences[0].strip() else answer
+                # Limit length
+                if len(answer) > 150:
+                    answer = answer[:147].rsplit(' ', 1)[0] + '...'
             
             if not answer or len(answer.strip()) == 0:
                 # Empty response - use fallback
