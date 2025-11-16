@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Battery Health Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>📋 Weekly Reports</h1>
+        <p>Generate AI-powered weekly battery health reports</p>
+
+        <div class="mb-3">
+            <button class="btn btn-primary" id="generate-btn">Generate Weekly Report</button>
+        </div>
+
+        <div id="report-container" class="card">
+            <div class="card-body">
+                <div id="report-content">
+                    <p class="text-muted">Click "Generate Weekly Report" to create a report based on your battery data.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+{% endblock %}

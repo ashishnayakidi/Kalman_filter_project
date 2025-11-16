@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>🔋 Battery Health Monitor</h1>
+        <p class="lead">Real-time monitoring of State of Charge (SOC) and State of Health (SOH)</p>
+        
+        <div class="alert alert-info">
+            <strong>💡 Quick Start:</strong> Use the navigation menu to access Dashboard, Chat, or Reports pages.
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">📊 Dashboard</h5>
+                        <p class="card-text">View real-time metrics, charts, and health insights</p>
+                        <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">💬 Chat</h5>
+                        <p class="card-text">Ask questions about your battery's health using AI</p>
+                        <a href="/chat" class="btn btn-primary">Go to Chat</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">📋 Reports</h5>
+                        <p class="card-text">Generate weekly battery health reports</p>
+                        <a href="/reports" class="btn btn-primary">Go to Reports</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h3>Features</h3>
+            <ul>
+                <li>⚡ Real-time SOC/SOH monitoring</li>
+                <li>📊 Interactive charts and visualizations</li>
+                <li>💬 AI-powered Q&A about battery health</li>
+                <li>📋 Weekly health reports</li>
+                <li>🔄 Automatic data fetching (every hour)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

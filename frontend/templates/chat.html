@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - Battery Health Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1>💬 Battery Health Chat</h1>
+        <p>Ask questions about your battery's health and get AI-powered insights</p>
+
+        <div id="chat-container" class="border rounded p-3 mb-3" style="height: 600px; overflow-y: auto; background-color: #f8f9fa; word-wrap: break-word;">
+            <div id="chat-messages" style="max-width: 100%;"></div>
+        </div>
+
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" id="question-input" placeholder="Ask a question about battery health...">
+            <button class="btn btn-primary" id="send-btn">Send</button>
+        </div>
+
+        <div class="alert alert-info">
+            <strong>💡 Tips:</strong>
+            <ul class="mb-0">
+                <li>Ask about battery health, charge level, or degradation</li>
+                <li>Questions are answered using AI analysis of your battery data</li>
+                <li>Example: "What is my battery health?" or "Should I charge my battery?"</li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Chat Controls</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-secondary w-100 mb-2" id="clear-btn">Clear Chat</button>
+                <div class="mt-3">
+                    <small class="text-muted">AI responses are generated using the LFM2-350M model via Ollama.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+{% endblock %}

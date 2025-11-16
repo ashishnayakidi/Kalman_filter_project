@@ -1,0 +1,22 @@
+soh:
+  warn_dsoh_pct_per_week: -2.0  # Warn if SOH drops >2% per week
+  critical_dsoh_pct_per_week: -5.0
+
+dcir:
+  warn_rel_increase_pct: 20.0  # Warn if DCIR increases >20% from baseline
+  critical_rel_increase_pct: 50.0
+
+temp_stress:
+  high_temp_C: 45.0  # High temperature threshold
+  critical_temp_C: 55.0
+  high_soc_threshold: 0.8  # High SOC threshold for stress calculation
+  hours_at_high_temp_warn: 10.0  # Hours at high temp before warning
+
+fast_charge:
+  c_rate_warn: 2.0  # C-rate threshold for fast charge warning
+  c_rate_critical: 3.0
+
+drift:
+  residual_warn_mv: 50.0  # Residual warning threshold (mV)
+  residual_critical_mv: 100.0
+

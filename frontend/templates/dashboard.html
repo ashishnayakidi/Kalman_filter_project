@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Battery Health Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>📊 Dashboard</h1>
+        <p>Real-time battery health metrics and visualizations</p>
+
+        <div class="mb-3">
+            <button class="btn btn-primary" id="fetch-btn">🔄 Fetch Latest Data</button>
+            <span id="fetch-status" class="ms-3 text-muted"></span>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">SOC</h5>
+                        <h2 id="soc-value">-</h2>
+                        <div class="progress">
+                            <div class="progress-bar" id="soc-progress" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">SOH</h5>
+                        <h2 id="soh-value">-</h2>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" id="soh-progress" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">RUL</h5>
+                        <h2 id="rul-value">-</h2>
+                        <small id="rul-confidence" class="text-muted"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Voltage</h5>
+                        <h2 id="voltage-value">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Temperature</h5>
+                        <h2 id="temp-value">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Charges/Week</h5>
+                        <h2 id="charge-count">-</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>SOC / SOH Over Time</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="soc-soh-chart"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Voltage / Residual</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="voltage-chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
