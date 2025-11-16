@@ -1,6 +1,6 @@
 """FastAPI main application."""
 from fastapi import FastAPI
-from app.routes import health, ekf, ingest, summary, report
+from app.routes import health, ekf, ingest, summary, report, parquet
 from app.core.config import VERSION
 
 app = FastAPI(
@@ -17,8 +17,17 @@ app.include_router(ekf.router, tags=["ekf"])
 app.include_router(ingest.router, tags=["ingest"])
 # Summary routes at root level
 app.include_router(summary.router, tags=["summary"])
+# Parquet data query routes
+app.include_router(parquet.router, prefix="/data", tags=["data"])
 # Report routes
 app.include_router(report.router, prefix="/report", tags=["report"])
+
+# Fleet console telematics ingestion (optional)
+try:
+    from fleet_console.ingestion.telematics import router as telematics_router
+    app.include_router(telematics_router, prefix="/fleet", tags=["Fleet"])
+except ImportError:
+    pass  # Fleet console optional
 
 # Root endpoint
 @app.get("/")

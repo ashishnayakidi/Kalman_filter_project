@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, jsonify, session
 from pathlib import Path
 import sys
 from datetime import datetime
+import requests
 
 # Add parent directory to path
 project_root = Path(__file__).parent.parent
@@ -20,19 +21,22 @@ app = Flask(__name__)
 app.secret_key = 'battery-agent-secret-key-change-in-production'
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
+# FastAPI backend URL
+FASTAPI_URL = 'http://localhost:8000'
+
 # Initialize app on startup (includes automatic hourly fetching)
 initialize_app()
 
 
 @app.route('/')
 def index():
-    """Landing page."""
-    return render_template('index.html')
+    """Home page - Dashboard."""
+    return render_template('dashboard.html')
 
 
 @app.route('/dashboard')
 def dashboard():
-    """Dashboard page."""
+    """Dashboard page (redirects to home)."""
     return render_template('dashboard.html')
 
 
@@ -88,6 +92,93 @@ def api_history():
         # Return last 1000 points
         history = ekf.history[-1000:] if len(ekf.history) > 0 else []
         return jsonify(history)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/prediction-metrics')
+def api_prediction_metrics():
+    """Get prediction metrics from FastAPI backend."""
+    try:
+        vehicle_id = request.args.get('vehicle_id', type=int)
+        url = f"{FASTAPI_URL}/data/prediction-metrics"
+        params = {}
+        if vehicle_id is not None:
+            params['vehicle_id'] = vehicle_id
+        
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Failed to fetch prediction metrics: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-summaries')
+def api_daily_summaries():
+    """Get daily summaries from FastAPI backend."""
+    try:
+        vehicle_id = request.args.get('vehicle_id', type=int)
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        limit = request.args.get('limit', default=100, type=int)
+        
+        url = f"{FASTAPI_URL}/data/daily-summaries"
+        params = {'limit': limit}
+        if vehicle_id is not None:
+            params['vehicle_id'] = vehicle_id
+        if start_date:
+            params['start_date'] = start_date
+        if end_date:
+            params['end_date'] = end_date
+        
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Failed to fetch daily summaries: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/vehicles')
+def api_vehicles():
+    """Get list of available vehicles from FastAPI backend."""
+    try:
+        url = f"{FASTAPI_URL}/data/vehicles"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Failed to fetch vehicles: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/ekf-timeseries')
+def api_ekf_timeseries():
+    """Get EKF timeseries data from FastAPI backend."""
+    try:
+        vehicle_id = request.args.get('vehicle_id', type=int)
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        limit = request.args.get('limit', default=1000, type=int)
+        
+        url = f"{FASTAPI_URL}/data/ekf-timeseries"
+        params = {'limit': limit}
+        if vehicle_id is not None:
+            params['vehicle_id'] = vehicle_id
+        if start_date:
+            params['start_date'] = start_date
+        if end_date:
+            params['end_date'] = end_date
+        
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Failed to fetch EKF timeseries: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -212,6 +303,24 @@ You charged your battery **{charge_count} times** this week. {'This is a normal 
 ## Remaining Useful Life
 Based on current trends, your battery is expected to last **{rul_text}** ({rul_confidence*100:.0f}% confidence). This estimate assumes you continue your current usage patterns.
 
+## Charging Efficiency
+Your charging efficiency is **{predictions.get('charging_efficiency_pct', 0):.1f}%**. This measures how much energy is actually stored versus what's supplied. Typical efficiency is 85-95% for lithium-ion batteries.
+
+## Driving Energy Consumption
+Your average energy consumption is **{predictions.get('energy_consumption_wh_per_km', 0):.0f} Wh/km**. Typical EVs consume 150-200 Wh/km. Lower is better for range.
+
+## Predicted Range
+Your current predicted range is **{predictions.get('predicted_range_km', 0):.0f} km**, which is **{predictions.get('range_drop_km', 0):.0f} km less** than when the battery was new.
+
+## Warranty Health Score
+Your warranty health score is **{predictions.get('warranty_health_score', 100):.0f}/100**. This score reflects how well your battery usage aligns with warranty guidelines. Higher scores indicate better warranty compliance.
+
+## Driving Style Impact
+Your driving style is classified as **{predictions.get('driving_style', {}).get('style', 'unknown')}** with {predictions.get('driving_style', {}).get('aggressiveness', 0)*100:.0f}% aggressiveness. {'More aggressive driving can accelerate battery degradation.' if predictions.get('driving_style', {}).get('aggressiveness', 0) > 0.6 else 'Your driving style is good for battery longevity.'}
+
+## Thermal Stress
+Your thermal stress index is **{predictions.get('thermal_stress_index', 0):.1f} weighted hours** above 45°C. {'High thermal stress can accelerate battery degradation. Try to park in shade and avoid fast charging in hot weather.' if predictions.get('thermal_stress_index', 0) > 10 else 'Your battery has been operating at safe temperatures.'}
+
 ## Recommendations
 1. **Monitor charging frequency**: Try to keep charging between 3-7 times per week for optimal battery health.
 2. **Avoid fast charging when possible**: Use slower charging methods to reduce battery stress.
@@ -282,6 +391,76 @@ def api_fetch_status():
         return jsonify(status)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/send_report_email', methods=['POST'])
+def api_send_report_email():
+    """Send weekly report via email."""
+    try:
+        data = request.json
+        email = data.get('email')
+        subject = data.get('subject', 'Weekly Battery Health Report')
+        report = data.get('report')
+        
+        if not email:
+            return jsonify({'error': 'Email address is required'}), 400
+        
+        if not report:
+            return jsonify({'error': 'Report content is required'}), 400
+        
+        # Try to send email using SMTP or API
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        import os
+        
+        smtp_host = os.getenv('SMTP_HOST', 'localhost')
+        smtp_port = int(os.getenv('SMTP_PORT', '25'))
+        smtp_user = os.getenv('SMTP_USER', '')
+        smtp_password = os.getenv('SMTP_PASSWORD', '')
+        smtp_from = os.getenv('SMTP_FROM', 'battery-monitor@localhost')
+        
+        try:
+            # Create message
+            msg = MIMEMultipart()
+            msg['From'] = smtp_from
+            msg['To'] = email
+            msg['Subject'] = subject
+            
+            # Convert markdown to HTML for email
+            html_report = report.replace('\n', '<br>')
+            html_report = html_report.replace('**', '<strong>').replace('**', '</strong>')
+            html_report = html_report.replace('# ', '<h2>').replace('\n', '</h2>')
+            
+            msg.attach(MIMEText(html_report, 'html'))
+            msg.attach(MIMEText(report, 'plain'))
+            
+            # Send email
+            if smtp_host == 'localhost' or smtp_host == 'smtp.gmail.com':
+                # Try local SMTP or Gmail
+                server = smtplib.SMTP(smtp_host, smtp_port)
+                if smtp_user and smtp_password:
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+                server.quit()
+            else:
+                # For production, use a service like SendGrid, Mailgun, etc.
+                return jsonify({
+                    'error': 'Email service not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD in .env file'
+                }), 500
+            
+            return jsonify({'success': True, 'message': 'Report sent successfully'})
+            
+        except Exception as e:
+            return jsonify({
+                'error': f'Failed to send email: {str(e)}',
+                'note': 'Please configure SMTP settings in .env file or use a service like SendGrid'
+            }), 500
+            
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 
 if __name__ == '__main__':

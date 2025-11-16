@@ -5,90 +5,344 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <h1>📊 Dashboard</h1>
-        <p>Real-time battery health metrics and visualizations</p>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1>📊 Dashboard</h1>
+                <p class="mb-0">Real-time battery health metrics and visualizations</p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <div class="btn-group" role="group" id="time-range-selector">
+                    <button type="button" class="btn btn-outline-primary btn-sm active" data-range="all">All</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-range="3m">3m</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-range="30d">30d</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-range="7d">7d</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-range="24h">24h</button>
+                </div>
+                <span id="data-points-indicator" class="text-muted small ms-2"></span>
+                <button class="btn btn-primary" id="fetch-btn">🔄 Fetch Latest Data</button>
+            </div>
+        </div>
+        <span id="fetch-status" class="text-muted small"></span>
 
-        <div class="mb-3">
-            <button class="btn btn-primary" id="fetch-btn">🔄 Fetch Latest Data</button>
-            <span id="fetch-status" class="ms-3 text-muted"></span>
+        <!-- Alert System -->
+        <div id="alert-container" class="mb-3"></div>
+
+        <!-- Health Score Hero Section -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card" id="health-score-hero">
+                    <div class="card-body p-4">
+                        <div class="row align-items-center">
+                            <div class="col-md-4 text-center">
+                                <div class="health-score-circle mb-3" id="health-score-circle">
+                                    <div class="health-score-value" id="health-score-value">-</div>
+                                    <div class="health-score-label">Health Score</div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <h3 id="health-status-text" class="mb-2">Loading...</h3>
+                                <p id="health-summary-text" class="text-muted mb-3">Analyzing battery health data...</p>
+                                <div class="health-breakdown" id="health-breakdown">
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-label">SOH:</span>
+                                        <div class="breakdown-bar">
+                                            <div class="breakdown-fill" id="breakdown-soh" style="width: 0%"></div>
+                                        </div>
+                                        <span class="breakdown-value" id="breakdown-soh-value">-</span>
+                                    </div>
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-label">Degradation:</span>
+                                        <div class="breakdown-bar">
+                                            <div class="breakdown-fill" id="breakdown-deg" style="width: 0%"></div>
+                                        </div>
+                                        <span class="breakdown-value" id="breakdown-deg-value">-</span>
+                                    </div>
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-label">Thermal:</span>
+                                        <div class="breakdown-bar">
+                                            <div class="breakdown-fill" id="breakdown-thermal" style="width: 0%"></div>
+                                        </div>
+                                        <span class="breakdown-value" id="breakdown-thermal-value">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <!-- Quick Insights Panel -->
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">💡 Quick Insights</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0" id="quick-insights">
+                            <li class="mb-2"><span class="insight-icon">⏳</span> <span class="insight-text">Loading insights...</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
 
+        <!-- Prediction Panel (Moved to Top) -->
         <div class="row mb-4">
-            <div class="col-md-2">
-                <div class="card text-center">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>🔮 Prediction Panel</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Remaining Life:</strong>
+                                <p id="prediction-rul" class="mb-0">-</p>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Degradation Rate:</strong>
+                                <p id="prediction-degradation" class="mb-0">-</p>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Driving Style:</strong>
+                                <p id="prediction-driving-style" class="mb-0">-</p>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Thermal Stress Index:</strong>
+                                <p id="prediction-thermal" class="mb-0">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Header: Key Metrics with Trend Indicators -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="card text-center border-primary metric-card">
                     <div class="card-body">
                         <h5 class="card-title">SOC</h5>
-                        <h2 id="soc-value">-</h2>
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+                            <h2 id="soc-value" class="mb-0">-</h2>
+                            <span id="soc-trend" class="trend-indicator"></span>
+                        </div>
+                        <small id="soc-change" class="text-muted d-block mb-2"></small>
                         <div class="progress">
                             <div class="progress-bar" id="soc-progress" role="progressbar" style="width: 0%"></div>
                         </div>
+                        <small id="soc-benchmark" class="text-muted mt-1 d-block"></small>
                     </div>
                 </div>
             </div>
-            <div class="col-md-2">
-                <div class="card text-center">
+            <div class="col-md-3">
+                <div class="card text-center border-success metric-card">
                     <div class="card-body">
                         <h5 class="card-title">SOH</h5>
-                        <h2 id="soh-value">-</h2>
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+                            <h2 id="soh-value" class="mb-0">-</h2>
+                            <span id="soh-trend" class="trend-indicator"></span>
+                        </div>
+                        <small id="soh-change" class="text-muted d-block mb-2"></small>
                         <div class="progress">
                             <div class="progress-bar bg-success" id="soh-progress" role="progressbar" style="width: 0%"></div>
                         </div>
+                        <small id="soh-benchmark" class="text-muted mt-1 d-block"></small>
                     </div>
                 </div>
             </div>
-            <div class="col-md-2">
-                <div class="card text-center">
+            <div class="col-md-3">
+                <div class="card text-center border-info metric-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Range Remaining</h5>
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+                            <h2 id="range-value" class="mb-0">-</h2>
+                            <span id="range-trend" class="trend-indicator"></span>
+                        </div>
+                        <small id="range-change" class="text-muted d-block mb-2"></small>
+                        <small id="range-drop" class="text-muted d-block"></small>
+                        <small id="range-benchmark" class="text-muted mt-1 d-block"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center metric-card" id="health-status-card">
                     <div class="card-body">
                         <h5 class="card-title">RUL</h5>
-                        <h2 id="rul-value">-</h2>
-                        <small id="rul-confidence" class="text-muted"></small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title">Voltage</h5>
-                        <h2 id="voltage-value">-</h2>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title">Temperature</h5>
-                        <h2 id="temp-value">-</h2>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title">Charges/Week</h5>
-                        <h2 id="charge-count">-</h2>
+                        <h2 id="rul-value-main">-</h2>
+                        <small id="rul-confidence-main" class="text-muted d-block mb-2"></small>
+                        <div class="rul-progress-container">
+                            <div class="rul-progress-bar" id="rul-progress-bar"></div>
+                        </div>
+                        <small id="rul-status-main" class="text-muted mt-1 d-block"></small>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row">
+        <!-- Secondary Metrics Row -->
+        <div class="row mb-4">
+            <div class="col-md-2">
+                <div class="card text-center metric-card">
+                    <div class="card-body">
+                        <h6 class="card-title">Voltage</h6>
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <h4 id="voltage-value" class="mb-0">-</h4>
+                            <span id="voltage-trend" class="trend-indicator small"></span>
+                        </div>
+                        <small id="voltage-change" class="text-muted"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center metric-card">
+                    <div class="card-body">
+                        <h6 class="card-title">Temperature</h6>
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <h4 id="temp-value" class="mb-0">-</h4>
+                            <span id="temp-trend" class="trend-indicator small"></span>
+                        </div>
+                        <small id="temp-change" class="text-muted"></small>
+                        <small id="temp-benchmark" class="text-muted d-block mt-1"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center metric-card">
+                    <div class="card-body">
+                        <h6 class="card-title">Charging Efficiency</h6>
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <h4 id="charge-efficiency" class="mb-0">-</h4>
+                            <span id="charge-trend" class="trend-indicator small"></span>
+                        </div>
+                        <small id="charge-change" class="text-muted"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center metric-card">
+                    <div class="card-body">
+                        <h6 class="card-title">Energy (Wh/km)</h6>
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <h4 id="energy-consumption" class="mb-0">-</h4>
+                            <span id="energy-trend" class="trend-indicator small"></span>
+                        </div>
+                        <small id="energy-change" class="text-muted"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center metric-card">
+                    <div class="card-body">
+                        <h6 class="card-title">Charges/Week</h6>
+                        <h4 id="charge-count">-</h4>
+                        <small id="charge-count-change" class="text-muted"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center metric-card">
+                    <div class="card-body">
+                        <h6 class="card-title">Degradation</h6>
+                        <h4 id="degradation-value">-</h4>
+                        <small id="degradation-rate" class="text-muted"></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="row mb-4">
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5>SOC / SOH Over Time</h5>
+                        <h5>SOC vs Time (Last 24h/Week)</h5>
                     </div>
                     <div class="card-body">
-                        <div id="soc-soh-chart"></div>
+                        <div id="soc-chart"></div>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5>Voltage / Residual</h5>
+                        <h5>SOH Trend (Months)</h5>
                     </div>
                     <div class="card-body">
-                        <div id="voltage-chart"></div>
+                        <div id="soh-trend-chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Temperature & Current Correlation</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="temp-current-chart"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>SOH Projection (6 Months)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="soh-projection-chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Description Section (Collapsible) -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#featuresCollapse" aria-expanded="false">
+                        <h5 class="mb-0">ℹ️ About This Dashboard</h5>
+                        <span class="badge bg-secondary">Click to expand</span>
+                    </div>
+                    <div class="collapse" id="featuresCollapse">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>📊 Key Features</h6>
+                                    <ul class="list-unstyled">
+                                        <li>✅ <strong>Real-time Monitoring:</strong> Track SOC, SOH, and battery health metrics</li>
+                                        <li>✅ <strong>Interactive Charts:</strong> Visualize trends over time with dynamic filtering</li>
+                                        <li>✅ <strong>Health Score:</strong> Comprehensive 0-100 health score with breakdown</li>
+                                        <li>✅ <strong>Prediction Metrics:</strong> RUL, degradation rates, and range loss estimates</li>
+                                        <li>✅ <strong>Quick Insights:</strong> AI-powered insights at a glance</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>🔧 Advanced Features</h6>
+                                    <ul class="list-unstyled">
+                                        <li>✅ <strong>Time Range Filtering:</strong> View data for 24h, 7d, 30d, 3m, or all time</li>
+                                        <li>✅ <strong>Alert System:</strong> Automatic detection of critical battery issues</li>
+                                        <li>✅ <strong>Trend Indicators:</strong> See if metrics are improving or degrading</li>
+                                        <li>✅ <strong>Benchmark Comparison:</strong> Compare your battery to industry standards</li>
+                                        <li>✅ <strong>AI Chat & Reports:</strong> Get answers and weekly health reports</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>📈 Data Sources</h6>
+                                    <p class="mb-2">This dashboard uses processed battery data from:</p>
+                                    <ul class="mb-0">
+                                        <li><strong>EKF Timeseries:</strong> Extended Kalman Filter state estimates (SOC, SOH, voltage predictions)</li>
+                                        <li><strong>Daily Summaries:</strong> Aggregated daily statistics (energy, temperature, efficiency)</li>
+                                        <li><strong>Prediction Metrics:</strong> Computed health indicators (degradation, RUL, thermal stress)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
