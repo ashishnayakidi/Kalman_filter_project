@@ -41,6 +41,13 @@ env/
 data/raw/*.mat
 data/processed/*.csv
 !data/processed/.gitkeep
+data/parquet/
+data/parquet_dev/
+data/parquet_quality/
+data/ekf_output/
+data/daily_summaries/
+data/prediction_metrics/
+dataset_v0/
 
 # Model files (large)
 models/*.gguf

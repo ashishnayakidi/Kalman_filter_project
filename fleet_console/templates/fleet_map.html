@@ -1,0 +1,59 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Map View - Fleet Console{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>🗺️ Vehicle Map View</h1>
+        <p>Interactive map showing all vehicles with color-coded SOH status</p>
+
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5>Total Vehicles</h5>
+                        <h2 id="total-vehicles">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <h5>🟢 Excellent</h5>
+                        <h2 id="excellent-count">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-warning">
+                    <div class="card-body">
+                        <h5>🟡 Good</h5>
+                        <h2 id="good-count">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-danger">
+                    <div class="card-body">
+                        <h5>🔴 Poor</h5>
+                        <h2 id="poor-count">-</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="map-container" style="height: 600px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/fleet_map.js') }}"></script>
+{% endblock %}
+
+

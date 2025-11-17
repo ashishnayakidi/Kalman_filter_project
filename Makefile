@@ -24,6 +24,12 @@ test:
 replay:
 	python scripts/run_replay.py
 
+run-fleet:
+	cd fleet_console && python flask_app.py
+
+generate-fleet-data:
+	python scripts/generate_sample_fleet_data.py
+
 fmt:
 	@echo "Formatting not configured. Consider using black or ruff."
 

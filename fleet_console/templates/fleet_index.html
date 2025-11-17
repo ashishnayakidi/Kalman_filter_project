@@ -1,0 +1,65 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Fleet Monitoring Console{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>🚗 Fleet Monitoring Console</h1>
+        <p class="lead">OEM & Fleet Manager Dashboard - Monitor thousands of batteries in real-time</p>
+
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">🗺️ Map View</h5>
+                        <p class="card-text">View all vehicles on an interactive map with color-coded SOH status.</p>
+                        <a href="/map" class="btn btn-primary">View Map</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">📊 Fleet Overview</h5>
+                        <p class="card-text">Aggregate health metrics, SOH distribution, and regional statistics.</p>
+                        <a href="/overview" class="btn btn-primary">View Overview</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">⚠️ Alerts & Ranking</h5>
+                        <p class="card-text">Vehicles at risk, sorted by priority with detailed alerts.</p>
+                        <a href="/alerts" class="btn btn-primary">View Alerts</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">📈 Analytics</h5>
+                        <p class="card-text">Historical trends, usage clusters, and failure predictions.</p>
+                        <a href="/analytics" class="btn btn-primary">View Analytics</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">🎯 Lead Generation</h5>
+                        <p class="card-text">Identify vehicles due for pack replacement or upgrade.</p>
+                        <a href="/leads" class="btn btn-primary">View Leads</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

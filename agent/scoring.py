@@ -53,6 +53,19 @@ class BatteryScorer:
         # Charging event tracking
         self.charge_events = []
         self.last_charge_state = None
+        
+        # EV-specific metrics
+        self.charging_energy_supplied = 0.0  # Wh supplied during charging
+        self.charging_energy_stored = 0.0  # Wh actually stored
+        self.driving_energy_consumed = 0.0  # Wh consumed during driving
+        self.driving_distance_km = 0.0  # km driven
+        self.current_charge_session_start = None
+        self.current_charge_session_energy = 0.0
+        self.nominal_range_km = 400.0  # Default EV range (configurable)
+        
+        # C-rate distribution for driving style
+        self.c_rate_distribution = deque(maxlen=1000)
+        self.thermal_stress_index = 0.0  # Weighted hours above 45°C
     
     def score_tick(self, ekf_out_dict: Dict):
         """
@@ -93,12 +106,49 @@ class BatteryScorer:
         self.soh_history.append(soh_pct)
         self.soh_timestamps.append(datetime.now())
         
-        # Track charging events
+        # Track charging events and efficiency
         I_A = ekf_out_dict.get('I_A', 0.0)
+        V_V = ekf_out_dict.get('V_V', ekf_out_dict.get('v_pred', 3.7))
+        dt_s = ekf_out_dict.get('dt_s', 1.0)
         is_charging = I_A > 0.1  # Current > 100mA indicates charging
-        if is_charging and (self.last_charge_state is None or not self.last_charge_state):
-            # Charge event started
-            self.charge_events.append(datetime.now())
+        
+        if is_charging:
+            if self.last_charge_state is None or not self.last_charge_state:
+                # Charge event started
+                self.charge_events.append(datetime.now())
+                self.current_charge_session_start = datetime.now()
+                self.current_charge_session_energy = 0.0
+            
+            # Track energy supplied (power * time)
+            power_supplied = abs(I_A * V_V)  # Watts
+            energy_supplied = power_supplied * dt_s / 3600  # Wh
+            self.charging_energy_supplied += energy_supplied
+            self.current_charge_session_energy += energy_supplied
+            
+            # Estimate energy stored (accounting for losses)
+            # Efficiency typically 85-95% for Li-ion
+            eta_charge = params.get('eta', 0.98)  # Coulombic efficiency
+            energy_stored = energy_supplied * eta_charge
+            self.charging_energy_stored += energy_stored
+        else:
+            # Not charging - could be driving or idle
+            if I_A < -0.1:  # Discharging (driving)
+                # Track driving energy consumption
+                power_consumed = abs(I_A * V_V)  # Watts
+                energy_consumed = power_consumed * dt_s / 3600  # Wh
+                self.driving_energy_consumed += energy_consumed
+                
+                # Estimate distance (simplified: assume constant efficiency)
+                # Typical EV: 150-200 Wh/km
+                efficiency_wh_per_km = 175.0  # Average
+                distance_km = energy_consumed / efficiency_wh_per_km
+                self.driving_distance_km += distance_km
+                
+                # Track C-rate for driving style
+                if Q_Ah > 0:
+                    c_rate = abs(I_A) / Q_Ah
+                    self.c_rate_distribution.append(c_rate)
+        
         self.last_charge_state = is_charging
         
         # Track fast charge
@@ -113,6 +163,14 @@ class BatteryScorer:
             if self.last_tick_time:
                 dt = (datetime.now() - self.last_tick_time).total_seconds() / 3600
                 self.hours_at_high_temp += dt
+        
+        # Track thermal stress index (weighted hours above 45°C)
+        if temp_C > 45.0:
+            if self.last_tick_time:
+                dt = (datetime.now() - self.last_tick_time).total_seconds() / 3600
+                # Weight increases with temperature
+                weight = (temp_C - 45.0) / 20.0  # Linear weight from 45-65°C
+                self.thermal_stress_index += dt * weight
         
         if soc > self.thresholds['temp_stress']['high_soc_threshold']:
             if self.last_tick_time:
@@ -236,12 +294,46 @@ class BatteryScorer:
         # Predict RUL (Remaining Useful Life)
         rul_days, rul_confidence = self._predict_rul()
         
+        # Calculate charging efficiency
+        charging_efficiency = 0.0
+        if self.charging_energy_supplied > 0:
+            charging_efficiency = (self.charging_energy_stored / self.charging_energy_supplied) * 100
+        
+        # Calculate driving energy consumption (Wh/km)
+        energy_consumption_wh_per_km = 0.0
+        if self.driving_distance_km > 0:
+            energy_consumption_wh_per_km = self.driving_energy_consumed / self.driving_distance_km
+        
+        # Calculate predicted range drop
+        current_soh = soh_pct / 100.0
+        range_drop_km = self.nominal_range_km * (1.0 - current_soh)
+        predicted_range_km = self.nominal_range_km * current_soh
+        
+        # Calculate warranty health score (0-100)
+        warranty_score = self._calculate_warranty_score(soh_pct, dsoh_pct_per_week, 
+                                                         self.thermal_stress_index,
+                                                         self.fast_charge_count)
+        
+        # Calculate driving style impact
+        driving_style = self._analyze_driving_style()
+        
+        # SOH projection (6-month forecast)
+        soh_projection = self._project_soh_6months(soh_pct, dsoh_pct_per_week)
+        
         # Additional prediction metrics
         predictions = {
             'rul_days': rul_days,
             'rul_confidence': rul_confidence,
             'estimated_cycles_remaining': self._estimate_cycles_remaining(),
-            'degradation_rate_per_month': abs(dsoh_pct_per_week * 4.33)  # Convert weekly to monthly
+            'degradation_rate_per_month': abs(dsoh_pct_per_week * 4.33),  # Convert weekly to monthly
+            'charging_efficiency_pct': charging_efficiency,
+            'energy_consumption_wh_per_km': energy_consumption_wh_per_km,
+            'predicted_range_km': predicted_range_km,
+            'range_drop_km': range_drop_km,
+            'warranty_health_score': warranty_score,
+            'driving_style': driving_style,
+            'thermal_stress_index': self.thermal_stress_index,
+            'soh_projection_6months': soh_projection
         }
         
         result = {
@@ -251,7 +343,8 @@ class BatteryScorer:
             'stress': stress,
             'drift': drift,
             'charge_count_week': charge_count,
-            'predictions': predictions
+            'predictions': predictions,
+            'avg_temp_C': np.mean([t.get('temp_C', 25.0) for t in self.daily_ticks]) if self.daily_ticks else 25.0
         }
         
         return result
@@ -316,6 +409,82 @@ class BatteryScorer:
         cycles_remaining = max(0, 1000 - cycles_used)
         
         return cycles_remaining
+    
+    def _calculate_warranty_score(self, soh_pct: float, dsoh_per_week: float, 
+                                  thermal_stress: float, fast_charge_count: int) -> float:
+        """
+        Calculate warranty health score (0-100).
+        Higher score = better warranty compliance.
+        """
+        score = 100.0
+        
+        # SOH penalty (lose points if below 90%)
+        if soh_pct < 90:
+            score -= (90 - soh_pct) * 0.5  # -0.5 points per % below 90
+        
+        # Degradation rate penalty
+        if abs(dsoh_per_week) > 0.5:  # Fast degradation
+            score -= min(20, abs(dsoh_per_week) * 10)
+        
+        # Thermal stress penalty
+        if thermal_stress > 10:  # More than 10 weighted hours above 45°C
+            score -= min(15, (thermal_stress - 10) * 0.5)
+        
+        # Fast charge penalty (moderate)
+        if fast_charge_count > 50:
+            score -= min(10, (fast_charge_count - 50) * 0.1)
+        
+        return max(0.0, min(100.0, score))
+    
+    def _analyze_driving_style(self) -> Dict:
+        """Analyze driving style based on C-rate distribution."""
+        if len(self.c_rate_distribution) == 0:
+            return {
+                'style': 'unknown',
+                'aggressiveness': 0.0,
+                'avg_c_rate': 0.0,
+                'max_c_rate': 0.0
+            }
+        
+        c_rates = list(self.c_rate_distribution)
+        avg_c_rate = np.mean(c_rates)
+        max_c_rate = np.max(c_rates)
+        
+        # Classify driving style
+        if avg_c_rate < 0.5:
+            style = 'conservative'
+            aggressiveness = 0.2
+        elif avg_c_rate < 1.0:
+            style = 'moderate'
+            aggressiveness = 0.5
+        elif avg_c_rate < 1.5:
+            style = 'aggressive'
+            aggressiveness = 0.7
+        else:
+            style = 'very_aggressive'
+            aggressiveness = 0.9
+        
+        return {
+            'style': style,
+            'aggressiveness': aggressiveness,
+            'avg_c_rate': float(avg_c_rate),
+            'max_c_rate': float(max_c_rate)
+        }
+    
+    def _project_soh_6months(self, current_soh: float, dsoh_per_week: float) -> List[Dict]:
+        """Project SOH for next 6 months."""
+        projection = []
+        weeks = 26  # ~6 months
+        
+        for week in range(weeks + 1):
+            projected_soh = current_soh + (dsoh_per_week * week)
+            projection.append({
+                'week': week,
+                'soh_pct': max(0, min(100, projected_soh)),
+                'date': (datetime.now() + timedelta(weeks=week)).isoformat()
+            })
+        
+        return projection
 
 
 # Global scorer instance (singleton pattern)

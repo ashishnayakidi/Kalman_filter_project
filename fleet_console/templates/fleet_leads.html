@@ -1,0 +1,63 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Lead Generation - Fleet Console{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>🎯 Lead Generation Engine</h1>
+        <p>Vehicles due for pack replacement or upgrade</p>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5>Total Candidates</h5>
+                        <h2 id="total-candidates">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center border-danger">
+                    <div class="card-body">
+                        <h5>High Priority</h5>
+                        <h2 id="high-priority">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5>Average SOH</h5>
+                        <h2 id="avg-soh">-</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Replacement Candidates</h5>
+                        <select id="priority-filter" class="form-select" style="width: auto; display: inline-block;">
+                            <option value="all">All Priorities</option>
+                            <option value="high">High Priority</option>
+                            <option value="medium">Medium Priority</option>
+                        </select>
+                    </div>
+                    <div class="card-body">
+                        <div id="leads-table"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/fleet_leads.js') }}"></script>
+{% endblock %}
+
+

@@ -1,339 +1,188 @@
-# Battery Health Monitor - EKF + LFM2-350M
+# Battery Health Monitor
 
-A production-ready battery state estimation and health monitoring system using Extended Kalman Filter (EKF) for real-time SOC/SOH estimation and LFM2-350M (via Ollama) for AI-powered health reports and Q&A.
+A production-ready battery state estimation and health monitoring system that uses Extended Kalman Filter (EKF) for real-time state estimation and AI-powered analytics for health insights.
 
-## Features
+## Overview
 
-- **1-RC Thevenin EKF** for battery state estimation (SOC, RC voltage, capacity)
-- **DCIR tracking** at multiple SOC levels (10%, 50%, 80%)
-- **Stress monitoring** (thermal, fast charge, high SOC)
-- **Drift detection** using residual analysis
-- **RUL Prediction** (Remaining Useful Life) with confidence levels
-- **Charging event tracking** and analysis
-- **NASA dataset support** with automatic flattening and processing
-- **Flask frontend** with real-time dashboard, AI chat, and weekly reports
-- **Ollama integration** for LFM2-350M model inference (with local GGUF fallback)
-- **Automatic hourly data fetching** from Downloads folder
-- **Manual data fetch** with .mat file processing pipeline
+This system processes battery telemetry data to provide:
+- **Real-time State Estimation**: SOC (State of Charge) and SOH (State of Health) using 1-RC Thevenin Extended Kalman Filter
+- **Health Analytics**: Degradation tracking, RUL prediction, thermal stress monitoring
+- **AI-Powered Insights**: Natural language Q&A and weekly health reports using LFM2-350M
+- **Interactive Dashboard**: Real-time metrics, charts, and visualizations
+- **Data Pipeline**: Scalable processing from raw data to analytics-ready Parquet format
 
-## Prerequisites
+## Architecture
 
-- Python 3.11+
-- macOS (M1/M2 recommended for Metal acceleration) or Linux
-- Ollama installed (optional, for AI features) - [Install Ollama](https://ollama.ai)
-- ~2GB free space for model file (if using local GGUF)
-
-## Quick Start
-
-### 1. Setup Environment
-
-```bash
-# Clone the repository
-git clone https://github.com/ashishnayakidi/Kalman_filter_project.git
-cd Kalman_filter_project
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-# Or use make
-make install
+```
+┌─────────────────┐
+│  Raw Data       │ → Pickle/CSV files → 80M+ rows
+│  (Telemetry)    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Data Pipeline  │ → Parquet Conversion → EKF Processing
+│  (6 Phases)     │ → Daily Summaries → Prediction Metrics
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Storage Layer  │ → Partitioned Parquet + DuckDB
+│  (Parquet)      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Backend API    │ → FastAPI: /data/* endpoints
+│  (FastAPI)      │ → /report/* (AI endpoints)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Frontend       │ → Flask: Dashboard, Chat, Reports
+│  (Flask)        │
+└─────────────────┘
 ```
 
-### 2. Setup Ollama (Recommended)
+## Key Features
 
-```bash
-# Install Ollama (if not already installed)
-# Visit: https://ollama.ai/download
+### Core Engine
+- **1-RC Thevenin EKF**: Real-time SOC/SOH estimation with voltage prediction
+- **DCIR Tracking**: Dynamic internal resistance at 10%, 50%, 80% SOC
+- **Stress Monitoring**: Thermal stress, fast charge events, high SOC duration
+- **Drift Detection**: Residual analysis for model accuracy
+- **RUL Prediction**: Remaining Useful Life with confidence intervals
 
-# Pull the LFM2-350M model
-ollama pull sam860/lfm2:350m
-```
+### Frontend Dashboard
+- **Real-time Metrics**: SOC, SOH, voltage, temperature, charging efficiency
+- **Health Score**: 0-100 composite score with breakdown
+- **Interactive Charts**: SOC/SOH trends, voltage predictions, temperature history
+- **Time Range Filtering**: 24h, 7d, 30d, 3m, All
+- **Alert System**: Automatic detection of critical issues
+- **Trend Indicators**: Visual indicators for improving/degrading metrics
 
-**Alternative:** If you prefer local GGUF file:
-1. Download `LFM2-350M-Q4_K_M.gguf` from HuggingFace
-2. Place it in `models/` directory
-3. The system will automatically use it if Ollama is unavailable
+### AI Features
+- **Intent-Aware Chat**: Natural conversation with battery health Q&A
+- **Weekly Reports**: AI-generated reports in layman-friendly language
+- **Email Reports**: Send reports via email (SMTP configured)
 
-### 3. Configure Environment
+### Data Processing
+- **Scalable Pipeline**: Handles 80M+ rows efficiently
+- **Partitioned Storage**: Parquet files organized by vehicle_id and date
+- **Batch Processing**: Vehicle-by-vehicle EKF processing
+- **Daily Aggregation**: Energy, efficiency, temperature statistics
+- **Prediction Metrics**: Degradation rates, RUL, range loss, thermal stress
 
-Create a `.env` file (optional, defaults work for most cases):
+## Tech Stack
 
-```bash
-# EKF Parameters
-Q_AH_INIT=2.0
-R0_INIT=0.03
-R1_INIT=0.01
-C1_INIT=2000.0
-ETA_INIT=0.98
-SOC_INIT=1.0
+### Backend
+- **FastAPI**: REST API for data queries and AI endpoints
+- **Flask**: Frontend web server
+- **DuckDB**: In-process SQL analytics on Parquet files
+- **PyArrow**: Parquet I/O and data processing
 
-# EKF Noise Parameters
-EKF_Q_SOC=1e-7
-EKF_Q_VRC=1e-5
-EKF_R_VOLT=2.5e-5
+### Core Processing
+- **NumPy/SciPy**: EKF mathematics and numerical operations
+- **Pandas**: Data manipulation and analysis
+- **Scikit-learn**: Machine learning utilities
 
-# Model Configuration
-OLLAMA_MODEL=sam860/lfm2:350m
-OLLAMA_BASE_URL=http://localhost:11434
-MODEL_PATH=models/LFM2-350M-Q4_K_M.gguf
-```
+### Frontend
+- **HTML/CSS/JavaScript**: Dashboard UI
+- **Bootstrap 5**: Responsive styling
+- **Plotly**: Interactive charts and visualizations
 
-### 4. Download and Process NASA Dataset
-
-```bash
-# Download and flatten NASA B0005 dataset
-python scripts/nasa_load.py --battery B0005
-
-# This will:
-# - Attempt to download B0005.mat (or use existing file)
-# - Flatten to data/processed/B0005_flat.csv
-```
-
-**Manual Download:** If automatic download fails:
-1. Visit: https://data.nasa.gov/dataset/Lithium-Ion-Battery-Aging-Data/5K9Q-7V7H
-2. Download and extract the dataset
-3. Place `B0005.mat` in `data/raw/` or `~/Downloads/`
-4. Run the script again
-
-### 5. Start the Application
-
-```bash
-# Start Flask frontend (includes FastAPI backend)
-make run-frontend
-# Or directly:
-cd frontend && python flask_app.py
-```
-
-The application will be available at:
-- **Frontend**: http://localhost:5001
-- **API Docs**: http://localhost:5001/api/docs (if FastAPI routes are exposed)
-
-### 6. Using the Application
-
-1. **Dashboard**: View real-time metrics (SOC, SOH, RUL, Voltage, Temperature, Charging count)
-2. **Chat**: Ask questions about battery health using AI
-3. **Reports**: Generate weekly battery health reports in layman-friendly language
-4. **Data Fetching**: 
-   - Automatic: Runs every hour, checks Downloads folder for new .mat files
-   - Manual: Click "Fetch Latest Data" button in dashboard
+### AI
+- **LFM2-350M**: Local First Model via Ollama (with GGUF fallback)
+- **llama-cpp-python**: Local model inference
 
 ## Project Structure
 
 ```
 Kalman_filter_project/
-├── agent/                    # Battery agent core
-│   ├── ekf.py               # EKF implementation
-│   ├── ocv.py               # OCV lookup and derivation
-│   ├── scoring.py           # Health scoring (DCIR, stress, drift, RUL)
-│   ├── stream.py            # CSV streaming
-│   ├── summaries.py        # Summary formatting
+├── agent/                    # Core battery agent
+│   ├── ekf.py               # Extended Kalman Filter implementation
+│   ├── ocv.py               # Open Circuit Voltage lookup
+│   ├── scoring.py           # Health scoring (DCIR, stress, RUL)
 │   └── thresholds.yaml      # Health thresholds
 ├── app/                     # FastAPI backend
-│   ├── main.py             # FastAPI app entry
-│   ├── routes/              # API routes
-│   │   ├── health.py
-│   │   ├── ekf.py
-│   │   ├── ingest.py
-│   │   ├── summary.py
-│   │   └── report.py
-│   └── core/                # Core config and models
-│       ├── config.py
-│       └── models.py
+│   ├── main.py             # FastAPI application
+│   ├── routes/              # API endpoints
+│   │   ├── parquet.py      # Data query endpoints
+│   │   ├── report.py       # AI report endpoints
+│   │   └── ...
+│   └── core/               # Configuration and models
 ├── frontend/                 # Flask frontend
 │   ├── flask_app.py        # Flask application
 │   ├── templates/          # HTML templates
-│   │   ├── base.html
-│   │   ├── index.html
-│   │   ├── dashboard.html
-│   │   ├── chat.html
-│   │   └── reports.html
-│   ├── static/             # Static files
-│   │   ├── css/
-│   │   └── js/
+│   ├── static/             # CSS, JavaScript
 │   └── utils/              # Shared utilities
-│       └── core.py
-├── lfm/                     # LFM2-350M integration
-│   ├── runner.py           # Model runner (Ollama + local)
+├── lfm/                     # AI model integration
+│   ├── runner.py           # Model runner (Ollama/local)
 │   └── prompts.py          # Prompt templates
-├── scripts/                 # Utility scripts
-│   ├── nasa_load.py        # NASA data loader
-│   ├── run_replay.py       # Replay script
-│   └── generate_nasa_like_data.py
-├── data/
-│   ├── raw/                # Raw .mat files
-│   └── processed/          # Processed CSVs
-├── models/                  # LFM2-350M GGUF files (optional)
-├── tests/                   # Unit tests
-├── requirements.txt
-├── pyproject.toml
-├── Makefile
-└── README.md
+├── scripts/                 # Data processing scripts
+│   ├── batch_ekf_processing.py
+│   ├── daily_summaries.py
+│   ├── prediction_metrics.py
+│   └── ...
+├── data/                    # Data storage
+│   ├── parquet/            # Processed Parquet files
+│   ├── ekf_output/         # EKF timeseries
+│   ├── daily_summaries/    # Daily aggregations
+│   └── prediction_metrics/ # Prediction metrics
+└── requirements.txt
 ```
 
-## Key Features Explained
+## Data Pipeline
 
-### Automatic Data Fetching
+The system processes data through 6 phases:
 
-The system automatically:
-1. Checks `~/Downloads` and `data/raw/` for `B0005.mat` files every hour
-2. Flattens .mat files to CSV
-3. Processes through EKF
-4. Updates dashboard with new data
-
-### RUL Prediction
-
-- **Remaining Useful Life (RUL)**: Predicts when battery will reach 80% SOH
-- **Confidence Level**: Based on data quality and history length
-- **Display**: Shows in days, months, or years on dashboard
-
-### Weekly Reports
-
-AI-generated reports include:
-- Executive summary in simple terms
-- Charging activity analysis
-- Battery degradation summary
-- Remaining useful life prediction
-- Actionable recommendations
-
-All written in layman-friendly language, avoiding technical jargon.
-
-### Dashboard Metrics
-
-- **SOC**: State of Charge (0-100%)
-- **SOH**: State of Health (0-100%, 100% = brand new)
-- **RUL**: Remaining Useful Life with confidence
-- **Voltage**: Current battery voltage
-- **Temperature**: Average temperature
-- **Charges/Week**: Number of charging events this week
+1. **Phase 0**: Dataset freeze and versioning
+2. **Phase 1**: CSV → Parquet conversion (partitioned)
+3. **Phase 2**: Data quality checks (optional)
+4. **Phase 3**: Batch EKF processing
+5. **Phase 4**: Daily summaries generation
+6. **Phase 5**: Prediction metrics calculation
+7. **Phase 6**: Backend API endpoints
 
 ## API Endpoints
 
-### Health & Info
-- `GET /health` - Health check
-- `GET /api/state` - Get current EKF state
-- `GET /api/daily` - Get daily summary
-- `GET /api/minute` - Get minute rollup
-- `GET /api/history` - Get EKF history for charts
+### Data Endpoints (`/data/*`)
+- `GET /data/prediction-metrics` - Get prediction metrics for a vehicle
+- `GET /data/daily-summaries` - Get daily summaries with date filtering
+- `GET /data/ekf-timeseries` - Get detailed EKF timeseries data
+- `GET /data/vehicles` - List all available vehicles
 
-### Data Operations
-- `POST /api/fetch` - Manually trigger data fetch
-- `GET /api/fetch_status` - Get fetch status
+### AI Endpoints (`/report/*`)
+- `POST /report/qna` - Q&A about battery health
+- `POST /report/weekly` - Generate weekly report
 
-### Reports (AI-powered)
-- `POST /api/ask` - Q&A about battery health
-  ```json
-  {
-    "question": "Suggest general charging habits"
-  }
-  ```
-- `POST /api/weekly_report` - Generate weekly markdown report
+### Frontend Endpoints (`/api/*`)
+- `GET /api/state` - Current EKF state
+- `GET /api/history` - EKF history for charts
+- `POST /api/ask` - Chat Q&A
+- `POST /api/weekly_report` - Weekly report
+- `POST /api/send_report_email` - Email report
 
-## Configuration
+## Performance
 
-### EKF Parameters
-
-Edit `.env` to adjust:
-- `Q_AH_INIT`: Nominal capacity (Ah)
-- `R0_INIT`: Series resistance (Ohm)
-- `R1_INIT`: RC branch resistance (Ohm)
-- `C1_INIT`: RC branch capacitance (F)
-- `ETA_INIT`: Coulombic efficiency
-- `SOC_INIT`: Initial SOC (0.0-1.0)
-- `EKF_Q_SOC`: Process noise for SOC
-- `EKF_Q_VRC`: Process noise for RC voltage
-- `EKF_R_VOLT`: Measurement noise for voltage
-
-### Health Thresholds
-
-Edit `agent/thresholds.yaml` to adjust:
-- SOH warning thresholds
-- DCIR increase limits
-- Temperature stress thresholds
-- Fast charge C-rate limits
-- Residual drift thresholds
-
-## Testing
-
-```bash
-# Run all tests
-make test
-# Or
-pytest -q tests/
-```
-
-## Troubleshooting
-
-### Ollama Not Working
-
-1. Ensure Ollama is running: `ollama serve`
-2. Check if model is installed: `ollama list`
-3. Install model: `ollama pull sam860/lfm2:350m`
-4. System will fallback to local GGUF file if Ollama unavailable
-
-### Model Not Found
-
-If you see "Model not found", ensure:
-1. Ollama is running with model installed, OR
-2. `LFM2-350M-Q4_K_M.gguf` is in `models/` directory
-3. `MODEL_PATH` in `.env` points to correct location
-
-### NASA Dataset Download Fails
-
-1. Download manually from: https://data.nasa.gov/dataset/Lithium-Ion-Battery-Aging-Data/5K9Q-7V7H
-2. Extract and place `B0005.mat` in `data/raw/` or `~/Downloads/`
-3. System will automatically detect and process it
-
-### Import Errors
-
-Ensure you're in the project root and virtual environment is activated:
-```bash
-source .venv/bin/activate
-export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-```
-
-### Slow AI Responses
-
-- Ensure Ollama is running locally
-- Check Ollama logs for issues
-- Reduce `max_tokens` in prompts if needed
-- Use smaller context window if using local GGUF
-
-## Performance Notes
-
-- **EKF**: Processes ~1000 ticks/second (Python)
-- **LFM2-350M (Ollama)**: ~10-30 tokens/second
-- **LFM2-350M (Local GGUF)**: ~2-5 tokens/second on M1 Air (Q4_K_M, Metal)
-- **Data Processing**: ~10-30 seconds for typical NASA dataset cycle
-- **Automatic Fetch**: Runs every hour in background thread
-
-## Makefile Commands
-
-```bash
-make install      # Install dependencies
-make run          # Start FastAPI backend
-make run-frontend # Start Flask frontend
-make test         # Run tests
-make replay       # Process CSV through EKF
-```
+- **EKF Processing**: ~1000 ticks/second
+- **Storage**: 2.45GB Parquet (from 10GB CSV)
+- **Query Speed**: Sub-second queries on partitioned Parquet
+- **AI Inference**: 10-30 tokens/second (Ollama)
 
 ## License
 
 MIT
 
+Our dataset originates from the EVBattery Dataset by Zheng et al., distributed under the Creative Commons BY-NC-SA 4.0 License.
+We use this data solely for non-commercial research and hackathon demonstration purposes.
+Full attribution is provided to the original authors, and no redistribution or commercial use of the dataset is involved.
+
 ## Acknowledgments
 
-- **NASA Battery Dataset**: https://data.nasa.gov/dataset/Lithium-Ion-Battery-Aging-Data
-- **LFM2-350M**: Local First Model
-- **Ollama**: https://ollama.ai
-- **llama-cpp-python**: https://github.com/abetlen/llama-cpp-python
+- LFM2-350M (Local First Model)
+- Ollama for model serving
 
-## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Contact
-
-For issues and questions, please open an issue on GitHub: https://github.com/ashishnayakidi/Kalman_filter_project/issues
+For detailed setup instructions, see [SETUP.md](SETUP.md).

@@ -4,6 +4,10 @@ from pathlib import Path
 import sys
 from datetime import datetime
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add parent directory to path
 project_root = Path(__file__).parent.parent
@@ -443,11 +447,26 @@ def api_send_report_email():
         from email.mime.multipart import MIMEMultipart
         import os
         
-        smtp_host = os.getenv('SMTP_HOST', 'localhost')
-        smtp_port = int(os.getenv('SMTP_PORT', '25'))
+        smtp_host = os.getenv('SMTP_HOST', '')
+        smtp_port = os.getenv('SMTP_PORT', '')
         smtp_user = os.getenv('SMTP_USER', '')
         smtp_password = os.getenv('SMTP_PASSWORD', '')
         smtp_from = os.getenv('SMTP_FROM', 'battery-monitor@localhost')
+        
+        # Check if SMTP is configured
+        if not smtp_host:
+            return jsonify({
+                'error': 'Email service not configured',
+                'message': 'SMTP settings are not configured. To enable email sending, please add the following to your .env file:',
+                'instructions': [
+                    'SMTP_HOST=smtp.gmail.com (or your SMTP server)',
+                    'SMTP_PORT=587 (or 465 for SSL)',
+                    'SMTP_USER=your-email@gmail.com',
+                    'SMTP_PASSWORD=your-app-password',
+                    'SMTP_FROM=battery-monitor@yourdomain.com'
+                ],
+                'note': 'For Gmail, you need to use an App Password (not your regular password). You can generate one in your Google Account settings.'
+            }), 400
         
         try:
             # Create message
@@ -465,26 +484,44 @@ def api_send_report_email():
             msg.attach(MIMEText(report, 'plain'))
             
             # Send email
-            if smtp_host == 'localhost' or smtp_host == 'smtp.gmail.com':
-                # Try local SMTP or Gmail
-                server = smtplib.SMTP(smtp_host, smtp_port)
+            smtp_port_int = int(smtp_port) if smtp_port else 587
+            
+            # Try to connect to SMTP server
+            if smtp_port_int == 465:
+                # SSL connection
+                server = smtplib.SMTP_SSL(smtp_host, smtp_port_int)
+            else:
+                # TLS connection
+                server = smtplib.SMTP(smtp_host, smtp_port_int)
+                server.starttls()
+            
+            # Authenticate if credentials provided
                 if smtp_user and smtp_password:
-                    server.starttls()
                     server.login(smtp_user, smtp_password)
+            
+            # Send message
                 server.send_message(msg)
                 server.quit()
-            else:
-                # For production, use a service like SendGrid, Mailgun, etc.
+            
+            return jsonify({'success': True, 'message': 'Report sent successfully!'})
+            
+        except smtplib.SMTPConnectError as e:
                 return jsonify({
-                    'error': 'Email service not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD in .env file'
-                }), 500
-            
-            return jsonify({'success': True, 'message': 'Report sent successfully'})
-            
+                'error': 'Could not connect to SMTP server',
+                'message': f'Failed to connect to {smtp_host}:{smtp_port}. Please check your SMTP settings.',
+                'details': str(e)
+            }), 500
+        except smtplib.SMTPAuthenticationError as e:
+            return jsonify({
+                'error': 'SMTP authentication failed',
+                'message': 'Invalid email or password. Please check your SMTP_USER and SMTP_PASSWORD settings.',
+                'details': str(e)
+            }), 500
         except Exception as e:
             return jsonify({
                 'error': f'Failed to send email: {str(e)}',
-                'note': 'Please configure SMTP settings in .env file or use a service like SendGrid'
+                'message': 'Please check your SMTP configuration in the .env file.',
+                'note': 'For Gmail, use an App Password (not your regular password)'
             }), 500
             
     except Exception as e:

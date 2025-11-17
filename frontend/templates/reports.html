@@ -10,6 +10,25 @@
 
         <div class="mb-3">
             <button class="btn btn-primary" id="generate-btn">Generate Weekly Report</button>
+            <button class="btn btn-success ms-2" id="download-btn" style="display: none;">Download PDF</button>
+            <button class="btn btn-info ms-2" id="email-btn" style="display: none;">Email Report</button>
+        </div>
+
+        <!-- Email Form (hidden by default) -->
+        <div id="email-form" class="card mb-3" style="display: none; position: relative; z-index: 1000;">
+            <div class="card-body">
+                <h5>Email Report</h5>
+                <div class="mb-3">
+                    <label for="email-input" class="form-label">Email Address</label>
+                    <input type="email" class="form-control" id="email-input" placeholder="your.email@example.com" autocomplete="email" style="pointer-events: auto;">
+                </div>
+                <div class="mb-3">
+                    <label for="email-subject" class="form-label">Subject (optional)</label>
+                    <input type="text" class="form-control" id="email-subject" placeholder="Weekly Battery Health Report" autocomplete="off" style="pointer-events: auto;">
+                </div>
+                <button class="btn btn-primary" id="send-email-btn">Send Email</button>
+                <button class="btn btn-secondary ms-2" id="cancel-email-btn">Cancel</button>
+            </div>
         </div>
 
         <div id="report-container" class="card">

@@ -1,0 +1,79 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Alerts & Ranking - Fleet Console{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>⚠️ Alerts & Ranking</h1>
+        <p>Vehicles at risk and active alerts</p>
+
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center border-danger">
+                    <div class="card-body">
+                        <h5>🔴 Critical</h5>
+                        <h2 id="critical-count">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-warning">
+                    <div class="card-body">
+                        <h5>🟠 High</h5>
+                        <h2 id="high-count">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-info">
+                    <div class="card-body">
+                        <h5>🟡 Medium</h5>
+                        <h2 id="medium-count">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <h5>🟢 Low</h5>
+                        <h2 id="low-count">-</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Vehicles at Risk (Ranked)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="vehicles-at-risk"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Recent Alerts</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="alerts-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/fleet_alerts.js') }}"></script>
+{% endblock %}
+
+

@@ -1,0 +1,76 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Fleet Overview - Fleet Console{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>📊 Fleet Health Overview</h1>
+        <p>Aggregate metrics and health distribution</p>
+
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5>Total Vehicles</h5>
+                        <h2 id="total-vehicles">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5>Average SOH</h5>
+                        <h2 id="avg-soh">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5>Avg Degradation</h5>
+                        <h2 id="avg-degradation">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5>Vehicles at Risk</h5>
+                        <h2 id="at-risk">-</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>SOH Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="soh-distribution-chart"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Regional Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="regional-stats"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/fleet_overview.js') }}"></script>
+{% endblock %}
+
+

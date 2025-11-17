@@ -92,8 +92,8 @@ async function updateDashboard() {
             soh = predictionMetrics.current_soh_pct * 100;
             soc = (state.soc || 0) * 100;
         } else {
-            const Q_current = state.params?.Q_Ah || 2.0;
-            const Q_nominal = 2.0;
+        const Q_current = state.params?.Q_Ah || 2.0;
+        const Q_nominal = 2.0;
             soh = (Q_current / Q_nominal) * 100;
             soc = (state.soc || 0) * 100;
         }
@@ -114,7 +114,7 @@ async function updateDashboard() {
         // (EKF timeseries API has issues, will fix separately)
         let history = [];
         try {
-            const historyRes = await fetch('/api/history');
+        const historyRes = await fetch('/api/history');
             history = await historyRes.json();
             console.log('In-memory history length:', history.length);
             
@@ -194,8 +194,8 @@ async function updateDashboard() {
             console.warn('Could not fetch daily summaries:', e);
             // Fallback to old endpoint
             try {
-                const dailyRes = await fetch('/api/daily');
-                const daily = await dailyRes.json();
+        const dailyRes = await fetch('/api/daily');
+        const daily = await dailyRes.json();
                 temp = daily.avg_temp_C || 25.0;
             } catch (e2) {
                 console.warn('Fallback daily endpoint also failed:', e2);
@@ -281,57 +281,57 @@ async function updateDashboard() {
             // Fallback to old daily endpoint
             const dailyRes = await fetch('/api/daily');
             const daily = await dailyRes.json();
-            const predictions = daily.predictions || {};
+        const predictions = daily.predictions || {};
             
-            const rulDays = predictions.rul_days;
+        const rulDays = predictions.rul_days;
             const predictionRulEl = document.getElementById('prediction-rul');
             if (predictionRulEl) {
-                if (rulDays !== null && rulDays !== undefined) {
-                    let rulText;
-                    if (rulDays > 365) {
+        if (rulDays !== null && rulDays !== undefined) {
+            let rulText;
+            if (rulDays > 365) {
                         rulText = `${(rulDays/365).toFixed(1)} years`;
-                    } else if (rulDays > 30) {
+            } else if (rulDays > 30) {
                         rulText = `${(rulDays/30).toFixed(0)} months`;
                     } else {
                         rulText = `${rulDays.toFixed(0)} days`;
                     }
                     predictionRulEl.textContent = rulText;
-                } else {
+            } else {
                     predictionRulEl.textContent = 'Insufficient data';
-                }
+        }
             }
             
-            const predictedRange = predictions.predicted_range_km || 0;
-            const rangeDrop = predictions.range_drop_km || 0;
+        const predictedRange = predictions.predicted_range_km || 0;
+        const rangeDrop = predictions.range_drop_km || 0;
             const rangeValueEl2 = document.getElementById('range-value');
             const rangeDropEl2 = document.getElementById('range-drop');
             if (rangeValueEl2) rangeValueEl2.textContent = predictedRange.toFixed(0) + ' km';
             if (rangeDropEl2 && rangeDrop > 0) {
                 rangeDropEl2.textContent = '- ' + rangeDrop.toFixed(0) + ' km from new';
-            }
-            
-            const warrantyScore = predictions.warranty_health_score || 100;
-            let healthStatus = '🟢 Excellent';
-            let healthColor = 'border-success';
-            if (warrantyScore < 70) {
-                healthStatus = '🔴 Poor';
-                healthColor = 'border-danger';
-            } else if (warrantyScore < 85) {
-                healthStatus = '🟡 Fair';
-                healthColor = 'border-warning';
-            }
+        }
+        
+        const warrantyScore = predictions.warranty_health_score || 100;
+        let healthStatus = '🟢 Excellent';
+        let healthColor = 'border-success';
+        if (warrantyScore < 70) {
+            healthStatus = '🔴 Poor';
+            healthColor = 'border-danger';
+        } else if (warrantyScore < 85) {
+            healthStatus = '🟡 Fair';
+            healthColor = 'border-warning';
+        }
             const healthStatusEl2 = document.getElementById('health-status');
             const healthStatusCardEl2 = document.getElementById('health-status-card');
             const warrantyScoreEl2 = document.getElementById('warranty-score');
             if (healthStatusEl2) healthStatusEl2.textContent = healthStatus;
             if (healthStatusCardEl2) healthStatusCardEl2.className = `card text-center ${healthColor}`;
             if (warrantyScoreEl2) warrantyScoreEl2.textContent = `Warranty Score: ${warrantyScore.toFixed(0)}/100`;
-            
-            const chargeEff = predictions.charging_efficiency_pct || 0;
+        
+        const chargeEff = predictions.charging_efficiency_pct || 0;
             const chargeEffEl2 = document.getElementById('charge-efficiency');
             if (chargeEffEl2) chargeEffEl2.textContent = chargeEff > 0 ? chargeEff.toFixed(1) + '%' : 'N/A';
-            
-            const energyCons = predictions.energy_consumption_wh_per_km || 0;
+        
+        const energyCons = predictions.energy_consumption_wh_per_km || 0;
             const energyConsEl = document.getElementById('energy-consumption');
             if (energyConsEl) energyConsEl.textContent = energyCons > 0 ? energyCons.toFixed(0) : 'N/A';
         }
@@ -409,7 +409,7 @@ async function updateDashboard() {
         
         // Update data points indicator
         updateDataPointsIndicator(history.length, dailySummariesData?.count || null);
-        
+
         // Update charts (pass filtered data)
         console.log('Updating charts with history length:', history.length);
         updateCharts(history, predictionMetrics, dailySummariesData);
@@ -525,7 +525,7 @@ function updateCharts(history, predictionMetrics, dailySummaries = null) {
         const weeks = [];
         const sohValues = [];
         const traces = [];
-        
+
         // Always show current SOH point
         const currentTrace = {
             x: [0],
@@ -569,7 +569,7 @@ function updateCharts(history, predictionMetrics, dailySummaries = null) {
                 type: 'scatter',
                 mode: 'lines',
                 line: { color: '#50C878', width: 2 }
-            };
+        };
             traces.push(stableTrace);
         }
 
@@ -1054,6 +1054,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.textContent = '🔄 Fetch Latest Data';
             }, 1000);
         }
-        });
+    });
     }
 });

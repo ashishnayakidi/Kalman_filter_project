@@ -1,0 +1,67 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Analytics - Fleet Console{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>📈 Analytics & Trends</h1>
+        <p>Historical trends, usage clusters, and failure predictions</p>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Fleet Average SOH Trend (Last 90 Days)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="trends-chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>High Fast Charge Usage</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="fast-charge-cluster"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>High Temperature Exposure</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="high-temp-cluster"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Failure Predictions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="predictions-table"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/fleet_analytics.js') }}"></script>
+{% endblock %}
+
+
